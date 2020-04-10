@@ -20,7 +20,6 @@ from baselines.trpo_mpi import trpo_mpi
 import dowel
 from dowel import logger as dowel_logger
 import gym
-import pytest
 import tensorflow as tf
 import torch
 
@@ -33,6 +32,7 @@ from garage.tf.experiment import LocalTFRunner
 from garage.tf.policies import GaussianMLPPolicy
 from garage.torch.algos import TRPO as PyTorch_TRPO
 from garage.torch.policies import GaussianMLPPolicy as PyTorch_GMP
+from garage.torch.value_functions import GaussianMLPValueFunction
 from tests import benchmark_helper
 from tests.fixtures import snapshot_config
 import tests.helpers as Rh
@@ -44,9 +44,9 @@ hyper_parameters = {
     'gae_lambda': 0.97,
     'discount': 0.99,
     'max_path_length': 100,
-    'n_epochs': 999,
+    'n_epochs': 500,
     'batch_size': 1024,
-    'n_trials': 5
+    'n_trials': 4
 }
 
 
@@ -76,7 +76,7 @@ class BenchmarkTRPO:  # pylint: disable=too-few-public-methods
                 _PLACEHOLDER_CACHE.clear()
                 seed = seeds[trial]
                 trial_dir = task_dir + '/trial_%d_seed_%d' % (trial + 1, seed)
-                garage_tf_dir = trial_dir + '/garage'
+                garage_tf_dir = trial_dir + '/garage_tf'
                 garage_pytorch_dir = trial_dir + '/garage_pytorch'
                 baselines_dir = trial_dir + '/baselines'
 
@@ -88,7 +88,7 @@ class BenchmarkTRPO:  # pylint: disable=too-few-public-methods
                 # pylint: disable=not-context-manager
                 with tf.Graph().as_default():
                     env.reset()
-                    garage_tf_csv = run_garage(env, seed, garage_tf_dir)
+                    garage_tf_csv = run_garage_tf(env, seed, garage_tf_dir)
 
                     # Run baseline algorithms
                     baseline_env.reset()
@@ -142,16 +142,18 @@ def run_garage_pytorch(env, seed, log_dir):
     runner = LocalRunner(snapshot_config)
 
     policy = PyTorch_GMP(env.spec,
-                         hidden_sizes=hyper_parameters['hidden_sizes'],
+                         hidden_sizes=(32, 32),
                          hidden_nonlinearity=torch.tanh,
                          output_nonlinearity=None)
 
-    value_function = LinearFeatureBaseline(env_spec=env.spec)
+    value_function = GaussianMLPValueFunction(env_spec=env.spec,
+                                              hidden_sizes=(32, 32),
+                                              hidden_nonlinearity=torch.tanh,
+                                              output_nonlinearity=None)
 
     algo = PyTorch_TRPO(env_spec=env.spec,
                         policy=policy,
                         value_function=value_function,
-                        max_kl_step=hyper_parameters['max_kl'],
                         max_path_length=hyper_parameters['max_path_length'],
                         discount=hyper_parameters['discount'],
                         gae_lambda=hyper_parameters['gae_lambda'])
@@ -171,7 +173,7 @@ def run_garage_pytorch(env, seed, log_dir):
     return tabular_log_file
 
 
-def run_garage(env, seed, log_dir):
+def run_garage_tf(env, seed, log_dir):
     """Create garage Tensorflow PPO model and training.
 
     Args:

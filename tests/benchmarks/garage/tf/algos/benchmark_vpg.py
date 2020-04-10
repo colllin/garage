@@ -8,7 +8,6 @@ from baselines.bench import benchmarks
 import dowel
 from dowel import logger as dowel_logger
 import gym
-import pytest
 import tensorflow as tf
 import torch
 
@@ -21,6 +20,7 @@ from garage.tf.experiment import LocalTFRunner
 from garage.tf.policies import GaussianMLPPolicy as TF_GMP
 from garage.torch.algos import VPG as PyTorch_VPG
 from garage.torch.policies import GaussianMLPPolicy as PyTorch_GMP
+from garage.torch.value_functions import GaussianMLPValueFunction
 from tests import benchmark_helper
 from tests import helpers as Rh
 from tests.fixtures import snapshot_config
@@ -50,6 +50,7 @@ class BenchmarkVPG:
     a plot
     plotting the average return curve from baselines and garage.
     """
+
     # pylint: disable=too-few-public-methods
 
     def benchmark_vpg(self):
@@ -143,13 +144,16 @@ def run_garage_pytorch(env, seed, log_dir):
                          hidden_nonlinearity=torch.tanh,
                          output_nonlinearity=None)
 
-    value_function = LinearFeatureBaseline(env_spec=env.spec)
+    value_function = GaussianMLPValueFunction(env_spec=env.spec,
+                                              hidden_sizes=(32, 32),
+                                              hidden_nonlinearity=torch.tanh,
+                                              output_nonlinearity=None)
 
     algo = PyTorch_VPG(env_spec=env.spec,
                        policy=policy,
-                       optimizer=torch.optim.Adam,
                        policy_lr=hyper_parameters['learning_rate'],
                        value_function=value_function,
+                       vf_lr=hyper_parameters['learning_rate'],
                        max_path_length=hyper_parameters['max_path_length'],
                        discount=hyper_parameters['discount'],
                        center_adv=hyper_parameters['center_adv'])

@@ -15,13 +15,11 @@ from baselines.ppo2 import ppo2
 import dowel
 from dowel import logger as dowel_logger
 import gym
-import pytest
 import tensorflow as tf
 import torch
 
 from garage.envs import normalize
 from garage.experiment import deterministic, LocalRunner
-from garage.np.baselines import LinearFeatureBaseline
 from garage.tf.algos import PPO as TF_PPO
 from garage.tf.baselines import GaussianMLPBaseline as TF_GMB
 from garage.tf.envs import TfEnv
@@ -30,13 +28,14 @@ from garage.tf.optimizers import FirstOrderOptimizer
 from garage.tf.policies import GaussianMLPPolicy as TF_GMP
 from garage.torch.algos import PPO as PyTorch_PPO
 from garage.torch.policies import GaussianMLPPolicy as PyTorch_GMP
+from garage.torch.value_functions import GaussianMLPValueFunction
 from tests import benchmark_helper
 from tests import helpers as Rh
 from tests.fixtures import snapshot_config
 from tests.wrappers import AutoStopEnv
 
 hyper_parameters = {
-    'n_epochs': 800,
+    'n_epochs': 500,
     'max_path_length': 128,
     'batch_size': 1024,
     'n_trials': 4,
@@ -56,6 +55,7 @@ class BenchmarkPPO:
     a plot
     plotting the average return curve from baselines and garage.
     """
+
     # pylint: disable=too-few-public-methods
 
     def benchmark_ppo(self):
@@ -95,8 +95,13 @@ class BenchmarkPPO:
                 garage_pytorch_dir = trial_dir + '/garage/pytorch'
                 baselines_dir = trial_dir + '/baselines'
 
+                # Run garage(PT) algorithms
+                env.reset()
+                garage_pytorch_csv = run_garage_pytorch(
+                    env, seed, garage_pytorch_dir)
+
                 with tf.Graph().as_default():
-                    # Run garage algorithms
+                    # Run garage(TF) algorithms
                     env.reset()
                     garage_tf_csv = run_garage_tf(env, seed, garage_tf_dir)
 
@@ -104,10 +109,6 @@ class BenchmarkPPO:
                     baseline_env.reset()
                     baseline_csv = run_baselines(baseline_env, seed,
                                                  baselines_dir)
-
-                env.reset()
-                garage_pytorch_csv = run_garage_pytorch(
-                    env, seed, garage_pytorch_dir)
 
                 baselines_csvs.append(baseline_csv)
                 garage_tf_csvs.append(garage_tf_csv)
@@ -169,20 +170,21 @@ def run_garage_pytorch(env, seed, log_dir):
                          hidden_nonlinearity=torch.tanh,
                          output_nonlinearity=None)
 
-    value_functions = LinearFeatureBaseline(env_spec=env.spec)
+    value_function = GaussianMLPValueFunction(env_spec=env.spec,
+                                              hidden_sizes=(32, 32),
+                                              hidden_nonlinearity=torch.tanh,
+                                              output_nonlinearity=None)
 
     algo = PyTorch_PPO(env_spec=env.spec,
                        policy=policy,
-                       value_function=value_functions,
-                       optimizer=torch.optim.Adam,
-                       policy_lr=3e-4,
+                       value_function=value_function,
                        max_path_length=hyper_parameters['max_path_length'],
                        discount=0.99,
                        gae_lambda=0.95,
                        center_adv=True,
                        lr_clip_range=0.2,
-                       minibatch_size=128,
-                       max_optimization_epochs=10)
+                       minibatch_size=100,
+                       optimization_epochs=10)
 
     # Set up logger since we are not using run_experiment
     tabular_log_file = osp.join(log_dir, 'progress.csv')

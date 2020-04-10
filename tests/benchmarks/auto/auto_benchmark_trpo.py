@@ -29,6 +29,7 @@ from garage.tf.experiment import LocalTFRunner
 from garage.tf.policies import GaussianMLPPolicy
 from garage.torch.algos import TRPO as PyTorch_TRPO
 from garage.torch.policies import GaussianMLPPolicy as PyTorch_GMP
+from garage.torch.value_functions import GaussianMLPValueFunction
 from tests import benchmark_helper
 from tests.wrappers import AutoStopEnv
 
@@ -124,9 +125,9 @@ def auto_benchmark_trpo_baselines():
         """
         # Set up TF Session
         ncpu = max(multiprocessing.cpu_count() // 2, 1)
-        config = tf.ConfigProto(allow_soft_placement=True,
-                                intra_op_parallelism_threads=ncpu,
-                                inter_op_parallelism_threads=ncpu)
+        config = tf.compat.v1.ConfigProto(allow_soft_placement=True,
+                                          intra_op_parallelism_threads=ncpu,
+                                          inter_op_parallelism_threads=ncpu)
         tf.compat.v1.Session(config=config).__enter__()
 
         # Set up logger for baselines
@@ -195,13 +196,16 @@ def auto_benchmark_trpo_garage_pytorch():
                              hidden_nonlinearity=torch.tanh,
                              output_nonlinearity=None)
 
-        value_function = LinearFeatureBaseline(env_spec=env.spec)
+        value_function = GaussianMLPValueFunction(
+            env_spec=env.spec,
+            hidden_sizes=(32, 32),
+            hidden_nonlinearity=torch.tanh,
+            output_nonlinearity=None)
 
         algo = PyTorch_TRPO(
             env_spec=env.spec,
             policy=policy,
             value_function=value_function,
-            max_kl_step=hyper_parameters['max_kl'],
             max_path_length=hyper_parameters['max_path_length'],
             discount=hyper_parameters['discount'],
             gae_lambda=hyper_parameters['gae_lambda'])
