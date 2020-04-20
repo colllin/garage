@@ -33,6 +33,8 @@ LONG_RUNNING_EXAMPLES = [
     EXAMPLES_ROOT_DIR / 'tf/rl2_ppo_ml10.py',
     EXAMPLES_ROOT_DIR / 'tf/rl2_ppo_ml10_meta_test.py',
     EXAMPLES_ROOT_DIR / 'tf/rl2_ppo_ml45.py',
+    EXAMPLES_ROOT_DIR / 'torch/ppo_mt10.py',
+    EXAMPLES_ROOT_DIR / 'torch/trpo_mt10.py',
 ]
 # yapf: enable
 
@@ -304,3 +306,27 @@ def test_rl2_ml10_meta_test():
         '--episode_per_task', '1', '--meta_batch_size', '10'
     ],
                           check=False).returncode == 0
+
+
+@pytest.mark.mujoco
+@pytest.mark.no_cover
+def test_ppo_mt10():
+    """Test ppo_mt10.py"""
+    # yapf: disable
+    assert subprocess.run([
+        EXAMPLES_ROOT_DIR / 'torch/ppo_mt10.py', '--epochs', '1',
+        '--batch_size', '10'
+    ], check=False).returncode == 0
+    # yapf: enable
+
+
+@pytest.mark.mujoco
+@pytest.mark.no_cover
+def test_trpo_mt10():
+    """Test ppo_mt10.py"""
+    # yapf: disable
+    assert subprocess.run([
+        EXAMPLES_ROOT_DIR / 'torch/trpo_mt10.py', '--epochs', '1',
+        '--batch_size', '10'
+    ], check=False).returncode == 0
+    # yapf: enable
