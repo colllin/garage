@@ -76,7 +76,7 @@ EXTRAS['dev'] = [
 ]  # yapf: disable
 
 # Benchmark dependencies (*not* included in 'all')
-EXTRAS['dev'] = [
+EXTRAS['benchmarks'] = [
     # Please keep alphabetized
     'baselines @ https://{}@api.github.com/repos/openai/baselines/tarball/ea25b9e8b234e6ee1bca43083f8f3cf974143998'.format(GARAGE_GH_TOKEN),  # noqa: E501
     'gtimer',
